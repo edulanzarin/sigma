@@ -16,10 +16,14 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QTableWidget,
     QErrorMessage,
+    QProgressBar,
+    QSizePolicy,
+    QProgressDialog,
 )
 from PyQt5.QtGui import QIcon, QStandardItemModel, QStandardItem
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QSizePolicy
+from PyQt5.QtCore import Qt, QTimer
+
+from error_window import MyErrorMessage
 
 from connect_banco import conectar_banco
 from process_cresol import process_cresol
@@ -186,6 +190,12 @@ class EmpresasWindow(QWidget):
         self.process_button.setEnabled(False)
         self.process_button.setCursor(Qt.PointingHandCursor)
 
+        self.conciliar_button = QPushButton("Conciliar")
+        self.conciliar_button.clicked.connect(self.save_button_clicked)
+        self.conciliar_button.setStyleSheet("QPushButton { max-width: 80px; }")
+        self.conciliar_button.setEnabled(False)
+        self.conciliar_button.setCursor(Qt.PointingHandCursor)
+
         # Crie um QLabel para o ícone de empresas
         self.save_button = QPushButton("Salvar")
         self.save_button.clicked.connect(self.save_button_clicked)
@@ -197,9 +207,12 @@ class EmpresasWindow(QWidget):
         layout_5.addStretch(1)
         layout_5.addWidget(self.process_button)
         layout_5.addWidget(self.save_button)
+        layout_5.addWidget(self.conciliar_button)
         layout_5.addStretch(1)
 
-        # Adicione os layouts horizontais ao layout vertical
+        layout_6 = QHBoxLayout()
+        layout_6.setAlignment(Qt.AlignTop)
+
         main_layout.addLayout(layout_1)
         main_layout.addLayout(layout_2)
         main_layout.addLayout(layout_3)
@@ -256,8 +269,8 @@ class EmpresasWindow(QWidget):
             conn.close()
 
         except Exception as e:
-            error_message = QErrorMessage()
-            error_message.showMessage("Erro ao carregar bancos: " + str(e))
+            error_message = MyErrorMessage()
+            error_message.showMessage("Erro ao carregar bancos! " + str(e))
             error_message.exec_()
 
     def choose_pdf(self, event):
@@ -282,21 +295,37 @@ class EmpresasWindow(QWidget):
         # Atualize o estado do botão "Processar" com base na variável choose_file
         self.process_button.setEnabled(self.choose_file)
 
+    def conciliar_button_clicked(self):
+        pass
+
     def process_button_clicked(self):
         if not self.pdf_file_path:
-            error_message = QErrorMessage()
+            error_message = MyErrorMessage()
             error_message.showMessage(
                 "Nenhum arquivo selecionado. Escolha um arquivo PDF antes de processar."
             )
             error_message.exec_()
             return
 
-        pdf_file = open(self.pdf_file_path, "rb")
-        dados_pdf = PyPDF2.PdfReader(pdf_file)
         selected_banco = self.combo_bancos.currentText()
         selected_banco = selected_banco.split(" - ")[0]
+
+        if selected_banco not in ("37", "23", "14"):
+            # Banco não suportado, exiba uma mensagem de erro
+            error_message = MyErrorMessage()
+            error_message.showMessage("Banco não cadastrado!")
+            error_message.exec_()
+            return
+
+        pdf_file = open(self.pdf_file_path, "rb")
+        dados_pdf = PyPDF2.PdfReader(pdf_file)
+
         if selected_banco == "37":
             df = process_viacredi(dados_pdf)
+        if selected_banco == "23":
+            df = process_sicredi(dados_pdf)
+        if selected_banco == "14":
+            df = process_safra(dados_pdf)
 
         conn = conectar_banco()
         cursor = conn.cursor()
@@ -345,6 +374,7 @@ class EmpresasWindow(QWidget):
 
         self.load_transacoes()
         self.save_button.setEnabled(True)
+        self.conciliar_button.setEnabled(True)
 
     def update_table(self, data):
         self.table_widget.setRowCount(len(data))
@@ -366,38 +396,12 @@ class EmpresasWindow(QWidget):
             self.table_widget.setRowHeight(row, 10)
 
         # Conecte o sinal de edição de célula para salvar as alterações no banco de dados
-        self.table_widget.cellChanged.connect(self.cell_changed)
-
-    def cell_changed(self, row, col):
-        if col in [
-            1,
-            2,
-        ]:  # Verifica se a célula editada está nas colunas de débito ou crédito
-            item = self.table_widget.item(row, col)
-            new_value = item.text()
-
-            # Determine qual coluna no banco de dados deve ser atualizada (débito ou crédito)
-            if col == 1:
-                col_name = "debito"
-            else:
-                col_name = "credito"
-
-            # Atualize o banco de dados com o novo valor
-            conn = conectar_banco()
-            cursor = conn.cursor()
-            update_query = f"""
-            UPDATE transacoes
-            SET {col_name} = %s
-            WHERE data_transacao = %s
-            """
-            cursor.execute(
-                update_query, (new_value, self.table_widget.item(row, 0).text())
-            )
-            conn.commit()
-            conn.close()
+        self.loading_animation_timer.stop()
+        self.process_button.setEnabled(True)
+        self.save_button.setEnabled(True)
+        self.conciliar_button.setEnabled(True)
 
     def save_button_clicked(self):
-        # Verifique se há dados na tabela
         if self.table_widget.rowCount() == 0:
             QMessageBox.warning(
                 self,
@@ -457,30 +461,8 @@ class EmpresasWindow(QWidget):
             conn.close()
 
         except Exception as e:
-            error_message = QErrorMessage()
-            error_message.showMessage("Erro ao carregar bancos: " + str(e))
-            error_message.exec_()
-
-    def load_empresas(self):
-        try:
-            conn = conectar_banco()
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT codigo_empresa, nome_empresa FROM empresas")
-
-            empresas = cursor.fetchall()
-
-            self.combo_empresas.clear()
-
-            for empresa in empresas:
-                codigo_empresa, nome_empresa = empresa
-                self.combo_empresas.addItem(f"{codigo_empresa} - {nome_empresa}")
-
-            conn.close()
-
-        except Exception as e:
-            error_message = QErrorMessage()
-            error_message.showMessage("Erro ao carregar bancos: " + str(e))
+            error_message = MyErrorMessage()
+            error_message.showMessage("Erro ao carregar empresa! " + str(e))
             error_message.exec_()
 
         # Desabilite o botão "Processar" no início, pois nenhum arquivo foi escolhido ainda
@@ -520,8 +502,8 @@ class EmpresasWindow(QWidget):
             )  # Ajuste o valor conforme necessário
 
         except Exception as e:
-            error_message = QErrorMessage()
-            error_message.showMessage("Erro ao carregar bancos: " + str(e))
+            error_message = MyErrorMessage()
+            error_message.showMessage("Erro ao carregar extrato! " + str(e))
             error_message.exec_()
 
     def choose_pagamentos(self, event):

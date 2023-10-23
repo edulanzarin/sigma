@@ -27,7 +27,7 @@ def process_viacredi(dados_pdf):
                 valor_str = partes[-3].replace(".", "").replace(",", ".")
                 valor = abs(float(valor_str))
                 descricao = " ".join(partes[0:-4])
-                deb_cred = "DEB" if "-" in partes[-3] else "CRED"
+                deb_cred = "CRED" if "-" in partes[-3] else "DEB"
 
                 if "Os dados" in linha:
                     stop_process = True

@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon
 from start_window import StartWindow
 from empresas_menu import EmpresasWindow
+from conciliacao_window import ConciliacaoWindow
 
 
 class MainWindow(QMainWindow):
@@ -53,7 +54,6 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(tab3, "Conciliações")
 
         tab1_layout = QVBoxLayout()
-        # Inserir a StartWindow dentro da guia "Início"
         self.start_window = StartWindow()
         tab1_layout.addWidget(self.start_window)
         tab1.setLayout(tab1_layout)
@@ -62,6 +62,11 @@ class MainWindow(QMainWindow):
         self.start_window = EmpresasWindow()
         tab2_layout.addWidget(self.start_window)
         tab2.setLayout(tab2_layout)
+
+        tab3_layout = QVBoxLayout()
+        self.start_window = ConciliacaoWindow()
+        tab3_layout.addWidget(self.start_window)
+        tab3.setLayout(tab3_layout)
 
         # Defina o menu no topo
         self.setMenuBar(menu_bar)
