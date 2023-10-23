@@ -191,7 +191,7 @@ class EmpresasWindow(QWidget):
         self.process_button.setCursor(Qt.PointingHandCursor)
 
         self.conciliar_button = QPushButton("Conciliar")
-        self.conciliar_button.clicked.connect(self.save_button_clicked)
+        self.conciliar_button.clicked.connect(self.conciliar_button_clicked)
         self.conciliar_button.setStyleSheet("QPushButton { max-width: 80px; }")
         self.conciliar_button.setEnabled(False)
         self.conciliar_button.setCursor(Qt.PointingHandCursor)
@@ -296,7 +296,62 @@ class EmpresasWindow(QWidget):
         self.process_button.setEnabled(self.choose_file)
 
     def conciliar_button_clicked(self):
-        pass
+        try:
+            conn = conectar_banco()
+            cursor = conn.cursor()
+
+            # Recupere o ID da empresa selecionada
+            selected_index = self.combo_empresas.currentIndex()
+            if selected_index >= 0:
+                selected_empresa = self.combo_empresas.itemText(selected_index)
+                empresa_selecionada = selected_empresa.split(" - ")[1]
+                cursor.execute(
+                    "SELECT id_empresa FROM empresas WHERE nome_empresa = %s",
+                    (empresa_selecionada,),
+                )
+                id_empresa = cursor.fetchone()
+
+                if id_empresa:
+                    # Construa o nome da tabela da empresa específica
+                    nome_tabela_conciliacao = f"conciliacao_{id_empresa[0]}"
+
+                    # Consulta SQL para atualizar a tabela de conciliação
+                    update_query = f"""
+                    UPDATE transacoes AS t
+                    SET t.debito = (
+                        SELECT COALESCE(debito, conta_debito)
+                        FROM {nome_tabela_conciliacao} AS c
+                        WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
+                    ),
+                    t.credito = (
+                        SELECT COALESCE(credito, conta_credito)
+                        FROM {nome_tabela_conciliacao} AS c
+                        WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
+                    );
+                    """
+
+                    cursor.execute(update_query)
+                    conn.commit()
+                    conn.close()
+                    self.load_transacoes()
+
+                    QMessageBox.information(
+                        self,
+                        "Conciliação realizada com sucesso",
+                        "A conciliação foi concluída com sucesso.",
+                    )
+                else:
+                    QMessageBox.warning(self, "Erro", "ID da empresa não encontrado.")
+            else:
+                QMessageBox.warning(
+                    self, "Erro", "Selecione uma empresa para realizar a conciliação."
+                )
+
+            conn.close()
+        except Exception as e:
+            error_message = MyErrorMessage()
+            error_message.showMessage("Erro ao realizar a conciliação! " + str(e))
+            error_message.exec_()
 
     def process_button_clicked(self):
         if not self.pdf_file_path:
@@ -396,7 +451,6 @@ class EmpresasWindow(QWidget):
             self.table_widget.setRowHeight(row, 10)
 
         # Conecte o sinal de edição de célula para salvar as alterações no banco de dados
-        self.loading_animation_timer.stop()
         self.process_button.setEnabled(True)
         self.save_button.setEnabled(True)
         self.conciliar_button.setEnabled(True)
