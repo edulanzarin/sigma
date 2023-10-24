@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QTableWidget,
     QErrorMessage,
+    QInputDialog,
 )
 from PyQt5.QtGui import QIcon, QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt
@@ -93,18 +94,24 @@ class ConciliacaoWindow(QWidget):
 
         self.listar_button = QPushButton("Listar Conciliações")
         self.listar_button.clicked.connect(self.listar_button_clicked)
-        self.listar_button.setStyleSheet("QPushButton { min-width: 120px; }")
+        self.listar_button.setStyleSheet(
+            "QPushButton { min-width: 120px; font-size: 12px;}"
+        )
         self.listar_button.setCursor(Qt.PointingHandCursor)
 
         self.cadastrar_button = QPushButton("Cadastrar Conciliações")
         self.cadastrar_button.clicked.connect(self.cadastrar_button_clicked)
-        self.cadastrar_button.setStyleSheet("QPushButton { min-width: 120px; }")
+        self.cadastrar_button.setStyleSheet(
+            "QPushButton { min-width: 120px; font-size: 12px;}"
+        )
         self.cadastrar_button.setEnabled(False)
         self.cadastrar_button.setCursor(Qt.PointingHandCursor)
 
         self.excel_button = QPushButton("Cadastrar Lista")
         self.excel_button.clicked.connect(self.cadastrar_lista_button_clicked)
-        self.excel_button.setStyleSheet("QPushButton { min-width: 120px; }")
+        self.excel_button.setStyleSheet(
+            "QPushButton { min-width: 120px; font-size: 12px;}"
+        )
         self.excel_button.setEnabled(False)
         self.excel_button.setCursor(Qt.PointingHandCursor)
 
@@ -128,10 +135,79 @@ class ConciliacaoWindow(QWidget):
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.setStyleSheet("QTableWidget { margin-top: 10px; }")
 
+        self.table_widget.itemDoubleClicked.connect(self.editar_celula)
         main_layout.addWidget(self.table_widget)
 
         self.load_empresas()
         self.setLayout(main_layout)
+
+    def editar_celula(self, item):
+        # Obter a linha e coluna da célula clicada
+        row = item.row()
+        column = item.column()
+
+        # Verificar se o item existe
+        if item is not None:
+            # Obter o valor atual da célula
+            valor_atual = item.text()
+
+            # Obter o nome da coluna da célula
+            nome_coluna = self.table_widget.horizontalHeaderItem(column).text()
+
+            # Criar uma janela de edição com mensagem personalizada
+            valor_editado, ok = QInputDialog.getText(
+                self,
+                f"Editar Valor de {nome_coluna}",
+                f"Digite o novo valor de {nome_coluna}:",
+                text=valor_atual,
+            )
+
+            # Se o usuário pressionar OK na janela de edição
+            if ok:
+                # Atualizar o valor na célula
+                item.setText(valor_editado)
+
+                # Atualizar o valor no banco de dados
+                selected_empresa = self.combo_empresas.currentText()
+                selected_empresa = selected_empresa.split(" - ")[1]
+
+                try:
+                    # Obter o ID da empresa
+                    conn = conectar_banco()
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT id_empresa FROM empresas WHERE nome_empresa = %s",
+                        (selected_empresa,),
+                    )
+                    result = cursor.fetchone()
+
+                    if result:
+                        id_empresa = result[0]
+
+                        # Obter informações da célula (por exemplo, descrição, débito, crédito)
+                        colunas = self.table_widget.columnCount()
+                        valores = [
+                            item.text()
+                            for col in range(colunas)
+                            for item in [self.table_widget.item(row, col)]
+                        ]
+
+                        # Atualizar o valor no banco de dados
+                        table_name = f"conciliacao_{id_empresa}"
+                        cursor.execute(
+                            f"UPDATE {table_name} SET descricao = %s, conta_debito = %s, conta_credito = %s WHERE id_conciliacao = %s",
+                            (valores[0], valores[1], valores[2], row + 1),
+                        )  # Supondo que o ID seja a posição da linha + 1
+
+                        conn.commit()
+                        conn.close()
+
+                except Exception as e:
+                    error_message = MyErrorMessage()
+                    error_message.showMessage(
+                        "Erro ao atualizar valor no banco de dados: " + str(e)
+                    )
+                    error_message.exec_()
 
     def load_empresas(self):
         try:

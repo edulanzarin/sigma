@@ -6,12 +6,12 @@ from main_window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
-    main_window = None  # Inicialmente, a janela principal é definida como None
+    main_window = None
 
-    def on_login_success():
-        nonlocal main_window  # Utilize a variável main_window fora do escopo local
-        login_window.close()  # Fecha a janela de login
-        main_window = MainWindow()
+    def on_login_success(id_usuario):
+        nonlocal main_window
+        main_window = MainWindow(id_usuario)
+        login_window.close()
         main_window.show()
 
     login_window = LoginWindow()

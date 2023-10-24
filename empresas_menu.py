@@ -15,16 +15,14 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QTableWidgetItem,
     QTableWidget,
-    QErrorMessage,
-    QProgressBar,
     QSizePolicy,
-    QProgressDialog,
     QInputDialog,
 )
-from PyQt5.QtGui import QIcon, QStandardItemModel, QStandardItem
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
 
 from error_window import MyErrorMessage
+from processing_window import ProcessingWindow
 
 from connect_banco import conectar_banco
 from process_cresol import process_cresol
@@ -35,8 +33,9 @@ from process_viacredi import process_viacredi
 
 
 class EmpresasWindow(QWidget):
-    def __init__(self):
+    def __init__(self, id_usuario):
         super().__init__()
+        self.id_usuario = id_usuario
 
         self.setWindowTitle("Empresas")
         self.setGeometry(100, 100, 800, 600)
@@ -187,34 +186,33 @@ class EmpresasWindow(QWidget):
 
         self.process_button = QPushButton("Processar")
         self.process_button.clicked.connect(self.process_button_clicked)
-        self.process_button.setStyleSheet("QPushButton { max-width: 80px; }")
+        self.process_button.setStyleSheet(
+            "QPushButton { max-width: 80px; font-size: 12px;}"
+        )
         self.process_button.setEnabled(False)
         self.process_button.setCursor(Qt.PointingHandCursor)
 
         self.conciliar_button = QPushButton("Conciliar")
         self.conciliar_button.clicked.connect(self.conciliar_button_clicked)
-        self.conciliar_button.setStyleSheet("QPushButton { max-width: 80px; }")
+        self.conciliar_button.setStyleSheet(
+            "QPushButton { max-width: 80px; font-size: 12px;}"
+        )
         self.conciliar_button.setEnabled(False)
         self.conciliar_button.setCursor(Qt.PointingHandCursor)
 
         self.save_button = QPushButton("Salvar")
         self.save_button.clicked.connect(self.save_button_clicked)
-        self.save_button.setStyleSheet("QPushButton { max-width: 80px; }")
+        self.save_button.setStyleSheet(
+            "QPushButton { max-width: 80px; font-size: 12px;}"
+        )
         self.save_button.setEnabled(False)
         self.save_button.setCursor(Qt.PointingHandCursor)
 
-        self.atualizar_button = QPushButton("Atualizar")
-        self.atualizar_button.clicked.connect(self.atualizar_button_clicked)
-        self.atualizar_button.setStyleSheet("QPushButton { max-width: 80px; }")
-        self.atualizar_button.setEnabled(False)
-        self.atualizar_button.setCursor(Qt.PointingHandCursor)
-        # Adicione um espaço flexível para empurrar os botões para o meio
         layout_5.addStretch(1)
         layout_5.addWidget(self.process_button)
         layout_5.addWidget(self.conciliar_button)
         layout_5.addWidget(self.save_button)
         layout_5.addStretch(1)
-        layout_5.addWidget(self.atualizar_button)
 
         layout_6 = QHBoxLayout()
         layout_6.setAlignment(Qt.AlignTop)
@@ -243,8 +241,9 @@ class EmpresasWindow(QWidget):
         self.setLayout(main_layout)
         self.load_empresas()
 
-    def atualizar_button_clicked(self):
-        self.load_transacoes()
+    def load_user_id(self, id_usuario):
+        # Este método será chamado para carregar o id_usuario
+        self.id_usuario = id_usuario
 
     def edit_cell(self, row, column):
         if column in (1, 2):  # Verifique se a coluna é débito (1) ou crédito (2)
@@ -314,13 +313,13 @@ class EmpresasWindow(QWidget):
                     "SELECT id_empresa FROM empresas WHERE nome_empresa = %s",
                     (empresa_selecionada,),
                 )
-                id_empresa = cursor.fetchone()
+                self.id_empresa = cursor.fetchone()
 
                 cursor.execute(
                     "SELECT b.codigo_banco, b.nome_banco FROM bancos b "
                     "JOIN empresa_banco eb ON b.id_banco = eb.id_banco "
                     "WHERE eb.id_empresa = %s",
-                    id_empresa,
+                    self.id_empresa,
                 )
 
                 bancos = cursor.fetchall()
@@ -372,26 +371,44 @@ class EmpresasWindow(QWidget):
                     "SELECT id_empresa FROM empresas WHERE nome_empresa = %s",
                     (empresa_selecionada,),
                 )
-                id_empresa = cursor.fetchone()
+                self.id_empresa = cursor.fetchone()
 
-                if id_empresa:
+                if self.id_empresa:
                     # Construa o nome da tabela da empresa específica
-                    nome_tabela_conciliacao = f"conciliacao_{id_empresa[0]}"
+                    nome_tabela_conciliacao = f"conciliacao_{self.id_empresa[0]}"
 
                     # Consulta SQL para atualizar a tabela de conciliação
                     update_query = f"""
                     UPDATE transacoes AS t
                     SET t.debito = (
-                        SELECT COALESCE(debito, conta_debito)
-                        FROM {nome_tabela_conciliacao} AS c
-                        WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
-                        LIMIT 1  # Limitar a uma única linha correspondente
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM {nome_tabela_conciliacao} AS c
+                                WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
+                            ) THEN
+                                (SELECT COALESCE(debito, conta_debito)
+                                FROM {nome_tabela_conciliacao} AS c
+                                WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
+                                LIMIT 1)
+                            ELSE
+                                t.debito  -- Mantém o valor original de debito
+                        END
                     ),
                     t.credito = (
-                        SELECT COALESCE(credito, conta_credito)
-                        FROM {nome_tabela_conciliacao} AS c
-                        WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
-                        LIMIT 1  # Limitar a uma única linha correspondente
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM {nome_tabela_conciliacao} AS c
+                                WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
+                            ) THEN
+                                (SELECT COALESCE(credito, conta_credito)
+                                FROM {nome_tabela_conciliacao} AS c
+                                WHERE t.descricao LIKE CONCAT('%', LOWER(c.descricao), '%')
+                                LIMIT 1)
+                            ELSE
+                                t.credito  -- Mantém o valor original de credito
+                        END
                     );
                     """
 
@@ -419,7 +436,8 @@ class EmpresasWindow(QWidget):
             error_message.exec_()
 
     def process_button_clicked(self):
-        self.process_button.setEnabled(False)
+        self.processing_window = ProcessingWindow()
+        self.processing_window.show()
         if not self.pdf_file_path:
             error_message = MyErrorMessage()
             error_message.showMessage(
@@ -496,8 +514,8 @@ class EmpresasWindow(QWidget):
         self.load_transacoes()
         self.save_button.setEnabled(True)
         self.conciliar_button.setEnabled(True)
-        self.atualizar_button.setEnabled(True)
         self.process_button.setEnabled(True)
+        self.processing_window.close()
 
     def update_table(self, data):
         self.table_widget.setRowCount(len(data))
@@ -594,17 +612,11 @@ class EmpresasWindow(QWidget):
         try:
             conn = conectar_banco()
             cursor = conn.cursor()
-
-            # ...
-
             cursor.execute(
                 "SELECT data_transacao, debito, credito, valor, descricao FROM transacoes"
             )
-
             transacoes = cursor.fetchall()
-
             data = [list(transacao) for transacao in transacoes]
-
             # Formatando as datas para o formato brasileiro
             for row in data:
                 if row[0] is not None:  # Verifique se a data não é nula
@@ -612,7 +624,6 @@ class EmpresasWindow(QWidget):
 
             self.table_widget.clearContents()
             self.table_widget.setRowCount(0)
-
             self.update_table(data)
 
             conn.close()

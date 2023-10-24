@@ -14,9 +14,10 @@ from conciliacao_window import ConciliacaoWindow
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, id_usuario):
         super().__init__()
 
+        self.id_usuario = id_usuario
         # Defina o ícone da janela
         icon = QIcon(r".\assets\icon.ico")
         self.setWindowIcon(icon)
@@ -59,7 +60,7 @@ class MainWindow(QMainWindow):
         tab1.setLayout(tab1_layout)
 
         tab2_layout = QVBoxLayout()
-        self.start_window = EmpresasWindow()
+        self.start_window = EmpresasWindow(id_usuario)
         tab2_layout.addWidget(self.start_window)
         tab2.setLayout(tab2_layout)
 

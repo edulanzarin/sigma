@@ -12,14 +12,14 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from login_function import (
     verificar_credenciais,
     registrar_login,
-    get_hora_atual,
-    get_hostname,
-    get_ip_address,
 )
+from empresas_menu import EmpresasWindow  # Importe a classe EmpresasWindow
 
 
 class LoginWindow(QWidget):
-    login_success = pyqtSignal()
+    login_success = pyqtSignal(
+        int
+    )  # Modifique o sinal para aceitar um argumento int (id_usuario)
 
     def __init__(self):
         super().__init__()
@@ -67,14 +67,8 @@ class LoginWindow(QWidget):
 
         if id_usuario:
             self.message_label.setText("Login bem-sucedido")
-            # Emita o sinal de sucesso do login
-            self.login_success.emit()
-            # Obtenha o IP da máquina usando a função get_ip_address
-            nome_computador = get_hostname()
-            ip_computador = get_ip_address()
-            hora_atual = get_hora_atual()
-            # Registre o login com o IP
-            registrar_login(id_usuario[0], hora_atual, ip_computador, nome_computador)
+            self.login_success.emit(id_usuario[0])
+            registrar_login(id_usuario[0])
         else:
             self.message_label.setText("Falha no login")
 
@@ -83,4 +77,13 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = LoginWindow()
     window.show()
+
+    empresas_window = EmpresasWindow()
+    window.login_success.connect(
+        empresas_window.show_empresas_window
+    )  # Conecte o sinal com a função diretamente
+    window.login_success.connect(
+        empresas_window.load_user_id
+    )  # Adicione essa linha para fornecer o id_usuario
+
     sys.exit(app.exec_())
