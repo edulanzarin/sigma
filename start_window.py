@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QSpacerItem,
     QSizePolicy,
 )
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
 from register_window import RegisterWindow
@@ -20,7 +20,7 @@ class StartWindow(QWidget):
         super().__init__()
         self.register_window = None
 
-        self.setGeometry(100, 100, 400, 200)
+        self.setGeometry(100, 100, 800, 400)  # Aumentei a largura da janela
 
         layout = QHBoxLayout()
 
@@ -51,16 +51,21 @@ class StartWindow(QWidget):
             QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
         )
 
-        right_container = QVBoxLayout()
+        right_container = (
+            QHBoxLayout()
+        )  # Usando um QHBoxLayout para o contêiner direito
+
+        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        spacer2 = QSpacerItem(50, 5, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        right_container.addSpacerItem(spacer)
 
         image_label = QLabel()
         image_label.setPixmap(QPixmap(r".\assets\contador.png"))
         right_container.addWidget(image_label)
         right_container.setAlignment(Qt.AlignVCenter)
 
-        spacer = QSpacerItem(300, 300, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        layout.addSpacerItem(spacer2)
         layout.addLayout(left_container)
-        layout.addSpacerItem(spacer)
         layout.addLayout(right_container)
 
         self.setLayout(layout)

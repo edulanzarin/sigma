@@ -416,12 +416,6 @@ class EmpresasWindow(QWidget):
                     conn.commit()
                     conn.close()
                     self.load_transacoes()
-
-                    QMessageBox.information(
-                        self,
-                        "Conciliação realizada com sucesso",
-                        "A conciliação foi concluída com sucesso.",
-                    )
                 else:
                     QMessageBox.warning(self, "Erro", "ID da empresa não encontrado.")
             else:
