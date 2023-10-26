@@ -5,7 +5,6 @@ from connect_banco import conectar_banco
 
 
 def get_ip_address():
-    # Use o módulo 'socket' para obter o IP do computador
     hostname = socket.gethostname()
     ip_computador = socket.gethostbyname(hostname)
     return ip_computador
