@@ -13,23 +13,31 @@ from login_function import (
     verificar_credenciais,
     registrar_login,
 )
-from empresas_menu import EmpresasWindow  # Importe a classe EmpresasWindow
-
+from empresas_menu import EmpresasWindow
 
 class LoginWindow(QWidget):
-    login_success = pyqtSignal(
-        int
-    )  # Modifique o sinal para aceitar um argumento int (id_usuario)
+    login_success = pyqtSignal(int)
 
     def __init__(self):
         super().__init__()
 
-        # Defina o ícone da janela
         icon = QIcon(r".\assets\login.png")
         self.setWindowIcon(icon)
 
         self.setWindowTitle("Login")
-        self.setGeometry(100, 100, 300, 200)
+        
+        # Defina um tamanho fixo para a janela (width, height)
+        self.setFixedSize(300, 200)
+
+        # Obtenha as informações da tela
+        screen_geometry = QApplication.desktop().screenGeometry()
+
+        # Calcule a posição central da janela
+        x = (screen_geometry.width() - self.width()) // 2
+        y = (screen_geometry.height() - self.height()) // 2
+
+        # Mova a janela para o centro da tela
+        self.move(x, y)
 
         layout = QVBoxLayout()
 
@@ -54,7 +62,6 @@ class LoginWindow(QWidget):
 
         self.setLayout(layout)
 
-        # Adicione um atalho de teclado para o botão
         enter_shortcut = QKeySequence(Qt.Key_Return)
         self.button_login.setShortcut(enter_shortcut)
 
@@ -62,7 +69,6 @@ class LoginWindow(QWidget):
         user = self.text_user.text()
         password = self.text_password.text()
 
-        # Verificar as credenciais no banco de dados
         id_usuario = verificar_credenciais(user, password)
 
         if id_usuario:
@@ -72,18 +78,13 @@ class LoginWindow(QWidget):
         else:
             self.message_label.setText("Falha no login")
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = LoginWindow()
     window.show()
 
     empresas_window = EmpresasWindow()
-    window.login_success.connect(
-        empresas_window.show_empresas_window
-    )  # Conecte o sinal com a função diretamente
-    window.login_success.connect(
-        empresas_window.load_user_id
-    )  # Adicione essa linha para fornecer o id_usuario
+    window.login_success.connect(empresas_window.show_empresas_window)
+    window.login_success.connect(empresas_window.load_user_id)
 
     sys.exit(app.exec_())
