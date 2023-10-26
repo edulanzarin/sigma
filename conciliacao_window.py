@@ -104,7 +104,6 @@ class ConciliacaoWindow(QWidget):
         self.cadastrar_button.setStyleSheet(
             "QPushButton { min-width: 120px; font-size: 12px;}"
         )
-        self.cadastrar_button.setEnabled(False)
         self.cadastrar_button.setCursor(Qt.PointingHandCursor)
 
         self.excel_button = QPushButton("Cadastrar Lista")
@@ -121,9 +120,15 @@ class ConciliacaoWindow(QWidget):
         layout_2.addWidget(self.excel_button)
         layout_2.addStretch(1)
 
+        layout_7 = QHBoxLayout()
+        layout_7.setAlignment(Qt.AlignTop)
+        icon7_label = QLabel()
+        layout_7.addWidget(icon7_label)
+
         main_layout.addLayout(layout_1)
         main_layout.addLayout(layout_3)
         main_layout.addLayout(layout_2)
+        main_layout.addLayout(layout_7)
 
         self.table_widget = QTableWidget()
         self.table_widget.setColumnCount(
@@ -133,7 +138,6 @@ class ConciliacaoWindow(QWidget):
         self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_widget.setSortingEnabled(True)
         self.table_widget.verticalHeader().setVisible(False)
-        self.table_widget.setStyleSheet("QTableWidget { margin-top: 10px; }")
 
         self.table_widget.itemDoubleClicked.connect(self.editar_celula)
         main_layout.addWidget(self.table_widget)
@@ -264,8 +268,6 @@ class ConciliacaoWindow(QWidget):
             error_message = MyErrorMessage()
             error_message.showMessage("Erro ao listar conciliações: " + str(e))
             error_message.exec_()
-
-        self.cadastrar_button.setEnabled(True)
 
     def update_table_widget(self, data):
         # Limpar a tabela existente

@@ -214,14 +214,17 @@ class EmpresasWindow(QWidget):
         layout_5.addWidget(self.save_button)
         layout_5.addStretch(1)
 
-        layout_6 = QHBoxLayout()
-        layout_6.setAlignment(Qt.AlignTop)
+        layout_7 = QHBoxLayout()
+        layout_7.setAlignment(Qt.AlignTop)
+        icon7_label = QLabel()
+        layout_7.addWidget(icon7_label)
 
         main_layout.addLayout(layout_1)
         main_layout.addLayout(layout_2)
         main_layout.addLayout(layout_3)
         main_layout.addLayout(layout_4)
         main_layout.addLayout(layout_5)
+        main_layout.addLayout(layout_7)
 
         # Crie um modelo de item padrão para a tabela
         self.table_widget = QTableWidget()
@@ -234,7 +237,6 @@ class EmpresasWindow(QWidget):
         self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_widget.setSortingEnabled(True)
         self.table_widget.verticalHeader().setVisible(False)
-        self.table_widget.setStyleSheet("QTableWidget { margin-top: 10px; }")
         self.table_widget.cellDoubleClicked.connect(self.edit_cell)
 
         main_layout.addWidget(self.table_widget)

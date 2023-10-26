@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIcon
 from start_window import StartWindow
 from empresas_menu import EmpresasWindow
 from conciliacao_window import ConciliacaoWindow
-
+from sql_window import SqlWindow
 
 class MainWindow(QMainWindow):
     def __init__(self, id_usuario):
@@ -49,10 +49,14 @@ class MainWindow(QMainWindow):
         tab1 = QWidget()
         tab2 = QWidget()
         tab3 = QWidget()
+        tab4 = QWidget()
 
         self.tabs.addTab(tab1, "Início")
         self.tabs.addTab(tab2, "Empresas")
         self.tabs.addTab(tab3, "Conciliações")
+
+        if id_usuario == 1:
+            self.tabs.addTab(tab4, "SQL Query")  # Adicione a aba somente se id_usuario for igual a 1
 
         tab1_layout = QVBoxLayout()
         self.start_window = StartWindow()
@@ -60,14 +64,20 @@ class MainWindow(QMainWindow):
         tab1.setLayout(tab1_layout)
 
         tab2_layout = QVBoxLayout()
-        self.start_window = EmpresasWindow(id_usuario)
-        tab2_layout.addWidget(self.start_window)
+        self.empresas_window = EmpresasWindow(id_usuario)
+        tab2_layout.addWidget(self.empresas_window)
         tab2.setLayout(tab2_layout)
 
         tab3_layout = QVBoxLayout()
-        self.start_window = ConciliacaoWindow()
-        tab3_layout.addWidget(self.start_window)
+        self.conciliacao_window = ConciliacaoWindow()
+        tab3_layout.addWidget(self.conciliacao_window)
         tab3.setLayout(tab3_layout)
+
+        if id_usuario == 1:
+            tab4_layout = QVBoxLayout()
+            self.sql_window = SqlWindow(id_usuario)
+            tab4_layout.addWidget(self.sql_window)
+            tab4.setLayout(tab4_layout)
 
         # Defina o menu no topo
         self.setMenuBar(menu_bar)
@@ -82,9 +92,10 @@ class MainWindow(QMainWindow):
         # Abre a StartWindow dentro da guia "Início"
         self.start_window.show()
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
+    # Suponha que o ID do usuário seja passado como argumento da linha de comando
+    user_id = int(sys.argv[1])
+    window = MainWindow(user_id)
     window.show()
     sys.exit(app.exec_())
