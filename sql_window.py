@@ -29,6 +29,11 @@ class SqlWindow(QMainWindow):
 
         self.execute_button = QPushButton("Execute")
         self.execute_button.clicked.connect(self.execute_sql)
+        self.execute_button.setStyleSheet(
+            "QPushButton {"
+            "max-width: 50px;"
+            "}"
+        )
         layout.addWidget(self.execute_button)
 
         self.result_display = QTextEdit()
