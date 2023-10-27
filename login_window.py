@@ -15,6 +15,7 @@ from login_function import (
 )
 from empresas_menu import EmpresasWindow
 
+
 class LoginWindow(QWidget):
     login_success = pyqtSignal(int)
 
@@ -25,8 +26,7 @@ class LoginWindow(QWidget):
         self.setWindowIcon(icon)
 
         self.setWindowTitle("Login")
-        
-        # Defina um tamanho fixo para a janela (width, height)
+
         self.setFixedSize(300, 200)
 
         # Obtenha as informações da tela
@@ -77,6 +77,7 @@ class LoginWindow(QWidget):
             registrar_login(id_usuario[0])
         else:
             self.message_label.setText("Falha no login")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

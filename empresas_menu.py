@@ -30,6 +30,7 @@ from process_safra import process_safra
 from process_safra_internacional import process_safra_internacional
 from process_sicredi import process_sicredi
 from process_viacredi import process_viacredi
+from process_sicoob import process_sicoob
 
 
 class EmpresasWindow(QWidget):
@@ -445,7 +446,7 @@ class EmpresasWindow(QWidget):
         selected_banco = self.combo_bancos.currentText()
         selected_banco = selected_banco.split(" - ")[0]
 
-        if selected_banco not in ("37", "23", "14"):
+        if selected_banco not in ("37", "23", "14", "30"):
             # Banco não suportado, exiba uma mensagem de erro
             error_message = MyErrorMessage()
             error_message.showMessage("Banco não cadastrado!")
@@ -461,6 +462,8 @@ class EmpresasWindow(QWidget):
             df = process_sicredi(dados_pdf)
         if selected_banco == "14":
             df = process_safra(dados_pdf)
+        if selected_banco == "30":
+            df = process_sicoob(dados_pdf)
 
         conn = conectar_banco()
         cursor = conn.cursor()
