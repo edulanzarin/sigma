@@ -1,5 +1,6 @@
 import sys
 import PyPDF2
+import os
 import pandas as pd
 from datetime import datetime
 from PyQt5.QtWidgets import (
@@ -31,12 +32,16 @@ from process_safra_internacional import process_safra_internacional
 from process_sicredi import process_sicredi
 from process_viacredi import process_viacredi
 from process_sicoob import process_sicoob
+from comprovante_sicoob import comprovante_sicoob
 
 
 class EmpresasWindow(QWidget):
     def __init__(self, id_usuario):
         super().__init__()
         self.id_usuario = id_usuario
+        self.combined_df = None
+        self.folder_path = ""  # Adicione um atributo folder_path
+
 
         self.setWindowTitle("Empresas")
         self.setGeometry(100, 100, 800, 600)
@@ -176,10 +181,19 @@ class EmpresasWindow(QWidget):
             False
         )  # Impede que os links sejam abertos em um navegador externo
 
-        self.pagamento_label.mousePressEvent = self.choose_pagamentos  #
+        self.pagamento_label.mousePressEvent = self.choose_pagamentos 
+
+        self.carregar_button = QPushButton("Carregar")
+        self.carregar_button.clicked.connect(self.carregar_button_clicked)
+        self.carregar_button.setStyleSheet(
+            "QPushButton { max-width: 80px; font-size: 12px;}"
+        )
+        self.carregar_button.setEnabled(False)
+        self.carregar_button.setCursor(Qt.PointingHandCursor)
 
         layout_4.addWidget(icon4_label)
         layout_4.addWidget(self.pagamento_label)
+        layout_4.addWidget(self.carregar_button)
 
         # LAYOUT PARA BOTÕES
         layout_5 = QHBoxLayout()
@@ -243,6 +257,86 @@ class EmpresasWindow(QWidget):
         main_layout.addWidget(self.table_widget)
         self.setLayout(main_layout)
         self.load_empresas()
+
+    def choose_pagamentos(self, event):
+        self.folder_path = QFileDialog.getExistingDirectory(self, "Escolher uma pasta com comprovantes de pagamentos")
+        self.carregar_button.setEnabled(True)
+
+        self.pagamento_label.setText(self.folder_path)
+        # Atualize o estado do botão "Processar" com base na variável choose_file
+        self.process_button.setEnabled(self.choose_file)
+
+    def carregar_button_clicked(self):
+        if self.folder_path:
+            try:
+                # Initialize combined_df if it's None
+                if self.combined_df is None:
+                    self.combined_df = pd.DataFrame()
+
+                # Iterate through the files in the folder
+                for filename in os.listdir(self.folder_path):
+                    if filename.endswith(".pdf"):
+                        pdf_file_path = os.path.join(self.folder_path, filename)
+                        pdf_file = open(pdf_file_path, "rb")
+                        dados_pdf = PyPDF2.PdfReader(pdf_file)
+                        # Process the PDF and add its data to combined_df
+                        df = comprovante_sicoob(dados_pdf)
+                        self.combined_df = pd.concat([self.combined_df, df], ignore_index=True)
+
+                selected_banco = self.combo_bancos.currentText()
+                selected_banco = selected_banco.split(" - ")[0]
+
+                if selected_banco == "30":
+                    # Convert the date strings in the "DATA" column to datetime.date objects
+                    self.combined_df['DATA'] = pd.to_datetime(self.combined_df['DATA'], format="%d/%m/%Y").dt.date
+
+                    tabela_nome = f"comprovante_{selected_banco}"
+
+                    conn = conectar_banco()
+                    cursor = conn.cursor()
+
+                    create_table_query = f"""
+                    CREATE TABLE IF NOT EXISTS {tabela_nome} (
+                        id_comprovante INT AUTO_INCREMENT PRIMARY KEY,
+                        data DATE,
+                        descricao VARCHAR(255),
+                        valor FLOAT,
+                        desconto FLOAT,
+                        juros FLOAT
+                    )
+                    """
+                    cursor.execute(create_table_query)
+                    conn.commit()
+
+                    delete_records_query = f"DELETE FROM {tabela_nome}"
+                    cursor.execute(delete_records_query)
+                    conn.commit()
+
+                    for index, row in self.combined_df.iterrows():
+                        data = row['DATA']
+                        descricao = row["DESCRICAO"]
+                        valor = row["VALOR"]
+                        desconto = row["DESCONTO"]
+                        juros = row["JUROS"]
+
+                        # Inserção dos dados
+                        insert_data_query = f"""
+                        INSERT INTO {tabela_nome} (data, descricao, valor, desconto, juros)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """
+
+                        cursor.execute(
+                            insert_data_query, (data, descricao, valor, desconto, juros)
+                        )
+                        conn.commit()
+
+                    cursor.close()
+                    conn.close()
+            except Exception as e:
+                error_message = MyErrorMessage()
+                error_message.showMessage("Erro ao carregar os comprovantes! " + str(e))
+                error_message.exec_()
+
 
     def load_user_id(self, id_usuario):
         # Este método será chamado para carregar o id_usuario
@@ -467,10 +561,8 @@ class EmpresasWindow(QWidget):
 
         conn = conectar_banco()
         cursor = conn.cursor()
-
         delete_table_query = "DROP TABLE IF EXISTS transacoes"
         cursor.execute(delete_table_query)
-        # Crie uma tabela temporária "transacoes" com as condições especificadas
         create_table_query = """
         CREATE TABLE transacoes (
             id_transacao INT AUTO_INCREMENT PRIMARY KEY UNIQUE,
@@ -481,7 +573,6 @@ class EmpresasWindow(QWidget):
             descricao VARCHAR(255)
         );
         """
-
         cursor.execute(create_table_query)
 
         df = df.where(pd.notna(df), None)
@@ -640,9 +731,6 @@ class EmpresasWindow(QWidget):
             error_message = MyErrorMessage()
             error_message.showMessage("Erro ao carregar extrato! " + str(e))
             error_message.exec_()
-
-    def choose_pagamentos(self, event):
-        pass
 
 
 def main():

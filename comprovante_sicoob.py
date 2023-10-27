@@ -1,27 +1,12 @@
-import tkinter as tk
-from tkinter import filedialog
-import PyPDF2
 import pandas as pd
 
 
-def process_pdf():
-    file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
-    if file_path:
-        dados_pdf = PyPDF2.PdfReader(open(file_path, "rb"))
-        process_sicoob(dados_pdf)
-
-
-def process_sicoob(dados_pdf):
+def comprovante_sicoob(dados_pdf):
     data_list = []
     descricao_list = []
     valor_list = []
     desconto_list = []
     juros_list = []
-    data = None
-    descricao = None
-    valor = None
-    desconto = None
-    juros = None
 
     for pagina_num, pagina in enumerate(dados_pdf.pages, 1):
         texto_pagina = pagina.extract_text()
@@ -38,9 +23,11 @@ def process_sicoob(dados_pdf):
                 valor_str = partes[-1]
                 valor = valor_str.replace(".", "").replace(",", ".")
             if "(-)" in linha:
-                desconto = partes[-1]
+                desconto_str = partes[-1]
+                desconto = desconto_str.replace(".", "").replace(",", ".")
             if "(+)" in linha:
-                juros = partes[-1]
+                juros_str = partes[-1]
+                juros = juros_str.replace(".", "").replace(",", ".")
                 if data is not None and descricao is not None and valor is not None:
                     data_list.append(data)
                     descricao_list.append(descricao)
@@ -48,23 +35,14 @@ def process_sicoob(dados_pdf):
                     desconto_list.append(desconto)
                     juros_list.append(juros)
 
-                df = pd.DataFrame(
-                    {
-                        "DATA": data_list,
-                        "DESCRICAO": descricao_list,
-                        "VALOR": valor_list,
-                        "DESCONTO": desconto_list,
-                        "JUROS": juros_list,
-                    }
-                )
+    df = pd.DataFrame(
+        {
+            "DATA": data_list,
+            "DESCRICAO": descricao_list,
+            "VALOR": valor_list,
+            "DESCONTO": desconto_list,
+            "JUROS": juros_list,
+        }
+    )
 
-                print(df)
-
-
-root = tk.Tk()
-root.title("Processar PDF")
-
-choose_pdf_button = tk.Button(root, text="Escolher PDF", command=process_pdf)
-choose_pdf_button.pack()
-
-root.mainloop()
+    return df 
