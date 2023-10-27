@@ -21,26 +21,30 @@ def process_viacredi(dados_pdf):
 
         for linha_num, linha in enumerate(linhas, 1):
             partes = linha.split(" ")
-            if len(partes) >= 5 and "SAC - " not in linha and "Finais de Semana" not in linha and "OUVIDORIA" not in linha:
+            if (
+                len(partes) >= 5
+                and "SAC - " not in linha
+                and "Finais de Semana" not in linha
+                and "OUVIDORIA" not in linha
+            ):
+                if "Os dados acima" in linha:
+                    stop_process = True
+                    break
                 if linha_num <= linhas_a_pular:
                     continue
-                
+
                 if ":" not in linha:
                     data = partes[-4]
                     valor_str = partes[-3].replace(".", "").replace(",", ".")
                     valor = abs(float(valor_str))
                     descricao = " ".join(partes[0:-4])
                     deb_cred = "CRED" if "-" in partes[-3] else "DEB"
-                else: 
+                else:
                     data = partes[-5]
                     valor_str = partes[-4].replace(".", "").replace(",", ".")
                     valor = abs(float(valor_str))
                     descricao = " ".join(partes[0:-5])
                     deb_cred = "CRED" if "-" in partes[-4] else "DEB"
-
-                if "Os dados acima" in linha:
-                    stop_process = True
-                    break
 
                 data_list.append(data)
                 descricao_list.append(descricao)
