@@ -526,6 +526,38 @@ class EmpresasWindow(QWidget):
             error_message.showMessage("Erro ao realizar a conciliação! " + str(e))
             error_message.exec_()
 
+    def atualizar_descricoes_transacoes(self):
+        try:
+            conn = conectar_banco()  # Conecta-se ao banco de dados
+            cursor = conn.cursor()
+
+            # Recupere os dados da tabela de transações
+            cursor.execute("SELECT data_transacao, valor, descricao FROM transacoes")
+            transacoes = cursor.fetchall()
+
+            for data_transacao, valor, descricao in transacoes:
+                # Verifique se há uma correspondência na tabela de comprovantes (comprovante_30)
+                cursor.execute(
+                    "SELECT descricao FROM comprovante_30 WHERE data = %s AND valor = %s",
+                    (data_transacao, valor),
+                )
+                matching_row = cursor.fetchone()
+
+                if matching_row:
+                    # Se houver uma correspondência, atualize a descrição na tabela de transações
+                    nova_descricao = matching_row[0]
+                    cursor.execute(
+                        "UPDATE transacoes SET descricao = %s WHERE data_transacao = %s AND valor = %s",
+                        (nova_descricao, data_transacao, valor),
+                    )
+
+            conn.commit()
+            conn.close()
+            print("Descrições atualizadas com sucesso!")
+
+        except Exception as e:
+            print("Erro ao atualizar as descrições das transações:", str(e))
+
     def process_button_clicked(self):
         self.processing_window = ProcessingWindow()
         self.processing_window.show()
@@ -600,6 +632,22 @@ class EmpresasWindow(QWidget):
 
         conn.commit()
         conn.close()
+
+        if selected_banco == "30":
+            conn = conectar_banco()
+            cursor = conn.cursor()
+            cursor.execute("SHOW TABLES LIKE 'comprovante_30'")
+            table_exists = cursor.fetchone()
+
+            if table_exists:
+                self.atualizar_descricoes_transacoes()
+            else:
+                # A tabela "comprovante_30" não existe, exiba uma mensagem
+                QMessageBox.warning(
+                    self, "Tabela não encontrada", "A tabela 'comprovante_30' não existe."
+                )
+
+            conn.close()
 
         self.load_transacoes()
         self.save_button.setEnabled(True)
